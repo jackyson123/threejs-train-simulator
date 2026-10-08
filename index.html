@@ -108,13 +108,33 @@
     .btn-horn { background: linear-gradient(135deg, #e11d48, #be123c); border: none; color: #fff; }
     .progress-bar-bg { width: 100%; height: 5px; background: rgba(255, 255, 255, 0.1); border-radius: 3px; margin-top: 4px; overflow: hidden; }
     .progress-bar-fill { height: 100%; width: 0%; background: linear-gradient(90deg, #38bdf8, #f43f5e); transition: width 0.1s linear; }
+
+    #error-display {
+      position: absolute;
+      top: 80px;
+      left: 20px;
+      z-index: 100;
+      background: rgba(239, 68, 68, 0.9);
+      color: #fff;
+      padding: 10px 15px;
+      border-radius: 8px;
+      font-family: monospace;
+      font-size: 12px;
+      display: none;
+    }
   </style>
 
-  <!-- 獨立穩定 Three.js 全域庫 (保證 100% 載入成功) -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <!-- 全球高速 JSDelivr CDN (附帶自動備用防線) -->
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+  <script>
+    if (typeof THREE === 'undefined') {
+      document.write('<script src="https://unpkg.com/three@0.128.0/build/three.min.js"><\/script>');
+    }
+  </script>
 </head>
 <body>
 
+  <div id="error-display"></div>
   <div id="webgl-container"></div>
 
   <div id="ui-container">
@@ -169,6 +189,13 @@
   </div>
 
   <script>
+    // 錯誤捕獲機制
+    window.onerror = function(message, source, lineno, colno, error) {
+      const errBox = document.getElementById('error-display');
+      errBox.style.display = 'block';
+      errBox.innerText = '系統錯誤: ' + message + ' (Line ' + lineno + ')';
+    };
+
     const state = {
       speed: 0,
       maxSpeed: 130,
@@ -190,6 +217,10 @@
       const container = document.getElementById('webgl-container');
       const width = window.innerWidth;
       const height = window.innerHeight;
+
+      if (typeof THREE === 'undefined') {
+        throw new Error("Three.js 網絡庫載入失敗，請檢查網絡連線！");
+      }
 
       scene = new THREE.Scene();
       scene.background = new THREE.Color(0x38bdf8);
@@ -221,7 +252,6 @@
       window.addEventListener('resize', onWindowResize);
     }
 
-    // --- 遠景獅子山風貌 (3D Mountains) ---
     function createFarMountains() {
       const mtnGroup = new THREE.Group();
       const mtnMat = new THREE.MeshStandardMaterial({ color: 0x1e3a29, roughness: 1.0 });
@@ -241,16 +271,13 @@
       scene.add(mtnGroup);
     }
 
-    // --- 城市景觀、高架橋與動態車輛 ---
     function createEnvironment() {
-      // 地面草坪與道路
       const groundGeo = new THREE.PlaneGeometry(1600, TRACK_LENGTH * 2);
       const groundMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.9 });
       const ground = new THREE.Mesh(groundGeo, groundMat);
       ground.rotation.x = -Math.PI / 2;
       scene.add(ground);
 
-      // 下方平行道路
       const roadGeo = new THREE.PlaneGeometry(28, TRACK_LENGTH * 2);
       const roadMat = new THREE.MeshStandardMaterial({ color: 0x334155 });
       const road = new THREE.Mesh(roadGeo, roadMat);
@@ -262,17 +289,14 @@
       const winMat = new THREE.MeshBasicMaterial({ color: 0xfef08a });
 
       for (let z = 0; z < TRACK_LENGTH; z += 50) {
-        // 交叉高架公路天橋 (Flyovers)
         if (z % 300 === 0 && z > 400) {
           createFlyoverBridge(z);
         }
 
-        // 觀塘綫高架車站 (位於 2400m 處)
         if (z === 2400) {
           createMTRStation(z);
         }
 
-        // 摩天大樓群 (2000m 進入市區)
         if (z >= 1800) {
           [-55, 60, -90, 95].forEach(xOffset => {
             if (Math.random() > 0.2) {
@@ -289,7 +313,6 @@
               bldg.position.set(xOffset, h / 2, z);
               scene.add(bldg);
 
-              // 窗戶網格
               const winMesh = new THREE.Mesh(new THREE.BoxGeometry(w + 0.2, h * 0.85, d + 0.2), winMat);
               winMesh.position.copy(bldg.position);
               winMesh.scale.set(0.97, 0.95, 0.97);
@@ -298,7 +321,6 @@
           });
         }
 
-        // 動態車輛 (雙層紅巴士與紅的 Taxi)
         if (z % 120 === 0) {
           createDoubleDeckerBus(22, z);
           createRedTaxi(32, z + 50);
@@ -306,7 +328,6 @@
       }
     }
 
-    // --- 高架公路天橋 ---
     function createFlyoverBridge(zPos) {
       const bridgeGroup = new THREE.Group();
       
@@ -323,12 +344,11 @@
       scene.add(bridgeGroup);
     }
 
-    // --- 雙層紅巴士 ---
     function createDoubleDeckerBus(x, z) {
       const bus = new THREE.Group();
       const busBody = new THREE.Mesh(
         new THREE.BoxGeometry(3.2, 4.2, 10),
-        new THREE.MeshStandardMaterial({ color: 0xbe123c, metalness: 0.3 }) // 港鐵/九巴紅
+        new THREE.MeshStandardMaterial({ color: 0xbe123c, metalness: 0.3 })
       );
       busBody.position.y = 2.3;
       
@@ -345,7 +365,6 @@
       vehicles.push({ group: bus, speed: 22 });
     }
 
-    // --- 香港紅的 (Red Taxi) ---
     function createRedTaxi(x, z) {
       const taxi = new THREE.Group();
       const lower = new THREE.Mesh(new THREE.BoxGeometry(2.2, 1.0, 4.8), new THREE.MeshStandardMaterial({ color: 0xbe123c }));
@@ -360,17 +379,14 @@
       vehicles.push({ group: taxi, speed: 32 });
     }
 
-    // --- 觀塘綫風格架空車站 (含月台幕門) ---
     function createMTRStation(zPos) {
       const station = new THREE.Group();
 
-      // 月台本體
       const platMat = new THREE.MeshStandardMaterial({ color: 0x94a3b8 });
       const plat = new THREE.Mesh(new THREE.BoxGeometry(9, 2.5, 200), platMat);
       plat.position.set(7.5, 6, zPos);
       station.add(plat);
 
-      // 半高式月台幕門 (Platform Screen Doors)
       const psdMat = new THREE.MeshStandardMaterial({ color: 0x38bdf8, transparent: true, opacity: 0.5 });
       const psdBorder = new THREE.MeshStandardMaterial({ color: 0x0284c7 });
       for (let z = zPos - 90; z <= zPos + 90; z += 12) {
@@ -381,7 +397,6 @@
         station.add(door, frame);
       }
 
-      // 月台頂棚與港鐵藍色支柱
       const roofMat = new THREE.MeshStandardMaterial({ color: 0x0284c7 });
       const roof = new THREE.Mesh(new THREE.BoxGeometry(11, 0.6, 200), roofMat);
       roof.position.set(7.5, 13, zPos);
@@ -399,11 +414,9 @@
       scene.add(station);
     }
 
-    // --- 架空鐵軌與架空電纜網 ---
     function createTracksAndCatenary() {
       const trackGroup = new THREE.Group();
 
-      // 高架橋水泥大樑
       const bridge = new THREE.Mesh(
         new THREE.BoxGeometry(7, 2, TRACK_LENGTH * 2),
         new THREE.MeshStandardMaterial({ color: 0x64748b })
@@ -411,14 +424,12 @@
       bridge.position.set(0, 5, TRACK_LENGTH / 2);
       trackGroup.add(bridge);
 
-      // 高架水泥柱與電纜支架
       const pillarMat = new THREE.MeshStandardMaterial({ color: 0x475569 });
       for (let z = 0; z < TRACK_LENGTH; z += 35) {
         const pillar = new THREE.Mesh(new THREE.CylinderGeometry(1.8, 2.2, 5), pillarMat);
         pillar.position.set(0, 2.5, z);
         trackGroup.add(pillar);
 
-        // 電纜支架
         const pole1 = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 5.5), pillarMat);
         pole1.position.set(-3.2, 8.8, z);
         const pole2 = pole1.clone(); pole2.position.x = 3.2;
@@ -427,7 +438,6 @@
         trackGroup.add(pole1, pole2, cross);
       }
 
-      // 雙鋼軌
       const railMat = new THREE.MeshStandardMaterial({ color: 0xf1f5f9, metalness: 0.9, roughness: 0.1 });
       const leftRail = new THREE.Mesh(new THREE.BoxGeometry(0.25, 0.35, TRACK_LENGTH * 2), railMat); leftRail.position.set(-1.8, 6.2, TRACK_LENGTH / 2);
       const rightRail = new THREE.Mesh(new THREE.BoxGeometry(0.25, 0.35, TRACK_LENGTH * 2), railMat); rightRail.position.set(1.8, 6.2, TRACK_LENGTH / 2);
@@ -436,7 +446,6 @@
       scene.add(trackGroup);
     }
 
-    // --- 精美港鐵 MTR 車廂 (含紅色流線車頭與集電弓) ---
     function createMTRTrain() {
       if (trainGroup) scene.remove(trainGroup);
       trainGroup = new THREE.Group();
@@ -447,26 +456,22 @@
         const car = new THREE.Group();
         const zOffset = -c * (carLength + 0.8);
 
-        // 銀灰不銹鋼金屬車身
         const bodyMat = new THREE.MeshStandardMaterial({ color: 0xcbd5e1, metalness: 0.85, roughness: 0.15 });
         const body = new THREE.Mesh(new THREE.BoxGeometry(3.6, 3.8, carLength), bodyMat);
         body.position.y = 8.1;
         car.add(body);
 
-        // 港鐵經典流線型紅色車頭 (Red Nose)
         if (c === 0) {
           const noseMat = new THREE.MeshStandardMaterial({ color: 0xbe123c, metalness: 0.3, roughness: 0.2 });
           const nose = new THREE.Mesh(new THREE.BoxGeometry(3.62, 3.82, 2.5), noseMat);
           nose.position.set(0, 8.1, carLength / 2 + 1.0);
           car.add(nose);
 
-          // 車頭駕駛室窗戶
           const cabWin = new THREE.Mesh(new THREE.BoxGeometry(3.2, 1.4, 0.2), new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.1 }));
           cabWin.position.set(0, 8.8, carLength / 2 + 2.3);
           car.add(cabWin);
         }
 
-        // 車身港鐵紅色腰線拉條
         const stripe = new THREE.Mesh(
           new THREE.BoxGeometry(3.68, 0.35, carLength),
           new THREE.MeshStandardMaterial({ color: 0xbe123c })
@@ -474,7 +479,6 @@
         stripe.position.y = 7.1;
         car.add(stripe);
 
-        // 深色車門與車窗細節
         const winMat = new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.1 });
         for (let z = -carLength / 2 + 3; z < carLength / 2 - 2; z += 4.5) {
           const winL = new THREE.Mesh(new THREE.BoxGeometry(0.1, 1.2, 2.0), winMat);
@@ -483,7 +487,6 @@
           car.add(winL, winR);
         }
 
-        // 車頂集電弓 (Pantograph)
         if (c === 1) {
           const pantoMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, metalness: 0.9 });
           const arm = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.15, 1.2), pantoMat);
@@ -495,7 +498,6 @@
         trainGroup.add(car);
       }
 
-      // 車頭探照燈
       headLight = new THREE.SpotLight(0xfffbebe, 0, 180, Math.PI / 5, 0.5);
       headLight.position.set(0, 8.0, 14);
       headLight.target.position.set(0, 0, 80);
@@ -531,4 +533,186 @@
         camera.position.set(tPos.x + 16, tPos.y + 16, tPos.z - 35);
         camera.lookAt(tPos.x, tPos.y + 8, tPos.z + 10);
       } else if (state.cameraMode === 2) {
-        camera.position.set(tPos.x, tPos.y + 80,
+        camera.position.set(tPos.x, tPos.y + 80, tPos.z - 10);
+        camera.lookAt(tPos.x, tPos.y, tPos.z + 30);
+      }
+    }
+
+    function updateWeatherUI() {
+      const btn = document.getElementById('btn-weather');
+      if (state.weatherMode === 0) {
+        scene.background.setHex(0x38bdf8);
+        scene.fog.color.setHex(0x38bdf8);
+        headLight.intensity = 0;
+        rainParticles.visible = false;
+        btn.innerText = "☀️ 天氣: 晴天";
+      } else if (state.weatherMode === 1) {
+        scene.background.setHex(0x475569);
+        scene.fog.color.setHex(0x475569);
+        headLight.intensity = 1.5;
+        rainParticles.visible = true;
+        btn.innerText = "🌧️ 天氣: 雨天";
+      } else if (state.weatherMode === 2) {
+        scene.background.setHex(0x020617);
+        scene.fog.color.setHex(0x020617);
+        headLight.intensity = 3.5;
+        rainParticles.visible = false;
+        btn.innerText = "🌙 天氣: 夜晚";
+      }
+    }
+
+    function playHornSound() {
+      try {
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc1 = audioCtx.createOscillator();
+        const osc2 = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+
+        osc1.type = 'sawtooth'; osc2.type = 'sawtooth';
+        osc1.frequency.setValueAtTime(293.66, audioCtx.currentTime);
+        osc2.frequency.setValueAtTime(349.23, audioCtx.currentTime);
+
+        gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 1.8);
+
+        osc1.connect(gain); osc2.connect(gain);
+        gain.connect(audioCtx.destination);
+
+        osc1.start(); osc2.start();
+        osc1.stop(audioCtx.currentTime + 1.8);
+        osc2.stop(audioCtx.currentTime + 1.8);
+      } catch (e) {}
+    }
+
+    function updatePhysics(delta) {
+      const accel = (state.power / 100) * 16.0;
+      const decel = (state.brake / 100) * 32.0 + 1.2;
+
+      if (state.power > 0) state.speed += accel * delta;
+      if (state.brake > 0 || state.power === 0) state.speed -= decel * delta;
+
+      state.speed = Math.max(0, Math.min(state.maxSpeed, state.speed));
+
+      const moveDist = ((state.speed * 1000) / 3600) * delta;
+      state.trainZ += moveDist;
+      state.distance += moveDist;
+
+      if (trainGroup) trainGroup.position.z = state.trainZ;
+
+      if (state.trainZ > TRACK_LENGTH) {
+        state.trainZ -= TRACK_LENGTH;
+        if (trainGroup) trainGroup.position.z = state.trainZ;
+      }
+
+      const zEl = document.getElementById('zone-indicator');
+      if (state.trainZ < 1800) {
+        zEl.innerText = "當前位置：🏞️ 郊區高架橋段";
+      } else if (state.trainZ >= 1800 && state.trainZ < 2800) {
+        zEl.innerText = "當前位置：🚉 觀塘綫高架車站";
+      } else {
+        zEl.innerText = "當前位置：🏙️ 九龍市區摩天大樓群";
+      }
+
+      vehicles.forEach(v => {
+        v.group.position.z += v.speed * delta;
+        if (v.group.position.z > TRACK_LENGTH) v.group.position.z = 0;
+      });
+
+      if (rainParticles && rainParticles.visible) {
+        rainParticles.position.z = state.trainZ;
+        const pos = rainParticles.geometry.attributes.position.array;
+        for (let i = 1; i < pos.length; i += 3) {
+          pos[i] -= 90 * delta;
+          if (pos[i] < 0) pos[i] = 100;
+        }
+        rainParticles.geometry.attributes.position.needsUpdate = true;
+      }
+    }
+
+    function updateUI() {
+      document.getElementById('val-speed').innerText = Math.round(state.speed);
+      document.getElementById('val-power').innerText = state.power;
+      document.getElementById('val-brake').innerText = state.brake;
+      document.getElementById('val-dist').innerText = (state.distance / 1000).toFixed(2);
+      document.getElementById('speed-bar').style.width = `${(state.speed / state.maxSpeed) * 100}%`;
+    }
+
+    function setupEvents() {
+      const sliderPower = document.getElementById('slider-power');
+      const sliderBrake = document.getElementById('slider-brake');
+
+      sliderPower.addEventListener('input', (e) => {
+        state.power = parseInt(e.target.value);
+        if (state.power > 0 && state.brake > 0) {
+          state.brake = 0; sliderBrake.value = 0;
+        }
+      });
+
+      sliderBrake.addEventListener('input', (e) => {
+        state.brake = parseInt(e.target.value);
+        if (state.brake > 0 && state.power > 0) {
+          state.power = 0; sliderPower.value = 0;
+        }
+      });
+
+      document.getElementById('btn-horn').addEventListener('click', playHornSound);
+
+      document.getElementById('btn-camera').addEventListener('click', () => {
+        state.cameraMode = (state.cameraMode + 1) % 3;
+        const names = ["駕駛艙", "全景跟隨", "鳥瞰視角"];
+        document.getElementById('btn-camera').innerText = `🎥 視角: ${names[state.cameraMode]}`;
+      });
+
+      document.getElementById('btn-weather').addEventListener('click', () => {
+        state.weatherMode = (state.weatherMode + 1) % 3;
+        updateWeatherUI();
+      });
+
+      document.getElementById('btn-train').addEventListener('click', () => {
+        state.trainType = state.trainType === 0 ? 1 : 0;
+        state.maxSpeed = state.trainType === 0 ? 130 : 160;
+        document.getElementById('btn-train').innerText = state.trainType === 0 ? "🚆 車款: 港鐵市區綫" : "🚆 車款: 機場快綫";
+        createMTRTrain();
+      });
+
+      window.addEventListener('keydown', (e) => {
+        if (e.key === 'w' || e.key === 'W' || e.key === 'ArrowUp') {
+          state.power = Math.min(100, state.power + 10); state.brake = 0;
+        } else if (e.key === 's' || e.key === 'S' || e.key === 'ArrowDown') {
+          state.brake = Math.min(100, state.brake + 10); state.power = 0;
+        } else if (e.key === 'h' || e.key === 'H') {
+          playHornSound();
+        } else if (e.key === 'c' || e.key === 'C') {
+          document.getElementById('btn-camera').click();
+        }
+        sliderPower.value = state.power;
+        sliderBrake.value = state.brake;
+      });
+    }
+
+    function onWindowResize() {
+      if (!renderer || !camera) return;
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    }
+
+    let clock = new THREE.Clock();
+
+    function animate() {
+      requestAnimationFrame(animate);
+      const delta = clock.getDelta();
+      updatePhysics(delta);
+      updateCamera();
+      updateUI();
+      renderer.render(scene, camera);
+    }
+
+    window.onload = () => {
+      initScene();
+      setupEvents();
+      animate();
+    };
+  </script>
+</body>
+</html>
