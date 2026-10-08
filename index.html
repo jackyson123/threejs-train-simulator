@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>3D LEGO 港鐵模擬列車駕駛器 | LEGO MTR Train Simulator</title>
+  <title>3D 高真實感港鐵模擬列車駕駛器 | HK MTR Train Simulator</title>
   <style>
     * {
       box-sizing: border-box;
@@ -54,7 +54,7 @@
       font-size: 18px;
       font-weight: 700;
       letter-spacing: 1px;
-      background: linear-gradient(135deg, #ef4444, #f59e0b, #38bdf8);
+      background: linear-gradient(135deg, #e11d48, #38bdf8);
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
     }
@@ -110,7 +110,7 @@
     .progress-bar-fill { height: 100%; width: 0%; background: linear-gradient(90deg, #38bdf8, #f43f5e); transition: width 0.1s linear; }
   </style>
 
-  <!-- 獨立穩定 Three.js 全域庫 -->
+  <!-- 獨立穩定 Three.js 全域庫 (保證 100% 載入成功) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 </head>
 <body>
@@ -120,8 +120,8 @@
   <div id="ui-container">
     <div class="top-hud">
       <div class="brand-title interactive">
-        <h1>🧱 LEGO MTR TRAIN SIMULATOR</h1>
-        <p id="zone-indicator">當前位置：🏞️ 樂高郊外高架段</p>
+        <h1>🚄 REALISTIC MTR SIMULATOR</h1>
+        <p id="zone-indicator">當前位置：🏞️ 郊區高架橋段</p>
       </div>
 
       <div class="hud-stats">
@@ -162,7 +162,7 @@
           <button class="btn btn-horn" id="btn-horn">🔊 鳴笛 (Horn)</button>
           <button class="btn" id="btn-camera">🎥 視角: 全景跟隨</button>
           <button class="btn" id="btn-weather">☀️ 天氣: 晴天</button>
-          <button class="btn" id="btn-train">🚆 車款: LEGO 港鐵綫</button>
+          <button class="btn" id="btn-train">🚆 車款: 港鐵市區綫</button>
         </div>
       </div>
     </div>
@@ -171,7 +171,7 @@
   <script>
     const state = {
       speed: 0,
-      maxSpeed: 120,
+      maxSpeed: 130,
       power: 0,
       brake: 0,
       distance: 0,
@@ -186,20 +186,6 @@
     const vehicles = [];
     const TRACK_LENGTH = 5000;
 
-    // 通用 LEGO 積木凸粒（Stud）產生器
-    function createLegoStuds(width, length, startX, startY, startZ, parentGroup) {
-      const studGeo = new THREE.CylinderGeometry(0.2, 0.2, 0.25, 12);
-      const studMat = new THREE.MeshStandardMaterial({ color: 0xd1d5db, roughness: 0.3 });
-      
-      for (let x = -width / 2 + 0.5; x < width / 2; x += 1.0) {
-        for (let z = -length / 2 + 0.5; z < length / 2; z += 1.0) {
-          const stud = new THREE.Mesh(studGeo, studMat);
-          stud.position.set(startX + x, startY, startZ + z);
-          parentGroup.add(stud);
-        }
-      }
-    }
-
     function initScene() {
       const container = document.getElementById('webgl-container');
       const width = window.innerWidth;
@@ -207,7 +193,7 @@
 
       scene = new THREE.Scene();
       scene.background = new THREE.Color(0x38bdf8);
-      scene.fog = new THREE.FogExp2(0x38bdf8, 0.0005);
+      scene.fog = new THREE.FogExp2(0x38bdf8, 0.0006);
 
       camera = new THREE.PerspectiveCamera(60, width / height, 0.1, 3500);
 
@@ -229,42 +215,42 @@
       createFarMountains();
       createEnvironment();
       createTracksAndCatenary();
-      createLegoMTRTrain();
+      createMTRTrain();
       createRain();
 
       window.addEventListener('resize', onWindowResize);
     }
 
-    // --- 遠景樂高風格山脈 ---
+    // --- 遠景獅子山風貌 (3D Mountains) ---
     function createFarMountains() {
       const mtnGroup = new THREE.Group();
-      const mtnMat = new THREE.MeshStandardMaterial({ color: 0x16a34a, roughness: 0.8 });
+      const mtnMat = new THREE.MeshStandardMaterial({ color: 0x1e3a29, roughness: 1.0 });
 
-      for (let i = 0; i < 20; i++) {
-        const radius = 70 + Math.random() * 80;
-        const height = 130 + Math.random() * 160;
-        const geo = new THREE.ConeGeometry(radius, height, 6);
+      for (let i = 0; i < 18; i++) {
+        const radius = 60 + Math.random() * 80;
+        const height = 120 + Math.random() * 180;
+        const geo = new THREE.ConeGeometry(radius, height, 8);
         const mtn = new THREE.Mesh(geo, mtnMat);
         
         const side = i % 2 === 0 ? 1 : -1;
-        const x = side * (380 + Math.random() * 200);
-        const z = (i * 260) - 1000;
+        const x = side * (350 + Math.random() * 200);
+        const z = (i * 280) - 1000;
         mtn.position.set(x, height / 2 - 20, z);
         mtnGroup.add(mtn);
       }
       scene.add(mtnGroup);
     }
 
-    // --- 樂高都市景觀與天橋網 ---
+    // --- 城市景觀、高架橋與動態車輛 ---
     function createEnvironment() {
-      // 樂高綠色底板 (Baseplate)
+      // 地面草坪與道路
       const groundGeo = new THREE.PlaneGeometry(1600, TRACK_LENGTH * 2);
-      const groundMat = new THREE.MeshStandardMaterial({ color: 0x15803d, roughness: 0.6 });
+      const groundMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.9 });
       const ground = new THREE.Mesh(groundGeo, groundMat);
       ground.rotation.x = -Math.PI / 2;
       scene.add(ground);
 
-      // 下方瀝青道路
+      // 下方平行道路
       const roadGeo = new THREE.PlaneGeometry(28, TRACK_LENGTH * 2);
       const roadMat = new THREE.MeshStandardMaterial({ color: 0x334155 });
       const road = new THREE.Mesh(roadGeo, roadMat);
@@ -272,193 +258,176 @@
       road.position.set(28, 0.1, TRACK_LENGTH / 2);
       scene.add(road);
 
-      const legoColors = [0xef4444, 0x3b82f6, 0xf59e0b, 0x10b981, 0x6366f1, 0xec4899];
+      const buildingColors = [0x475569, 0x334155, 0x64748b, 0x0284c7, 0x1e293b];
+      const winMat = new THREE.MeshBasicMaterial({ color: 0xfef08a });
 
       for (let z = 0; z < TRACK_LENGTH; z += 50) {
-        // 高架公路天橋
-        if (z % 280 === 0 && z > 400) {
-          createLegoFlyover(z);
+        // 交叉高架公路天橋 (Flyovers)
+        if (z % 300 === 0 && z > 400) {
+          createFlyoverBridge(z);
         }
 
-        // 樂高港鐵車站 (位於 2400m 處)
+        // 觀塘綫高架車站 (位於 2400m 處)
         if (z === 2400) {
-          createLegoStation(z);
+          createMTRStation(z);
         }
 
-        // 樂高高樓大廈 (彩色積木堆疊風格)
+        // 摩天大樓群 (2000m 進入市區)
         if (z >= 1800) {
-          [-60, 65, -95, 100].forEach(xOffset => {
-            if (Math.random() > 0.25) {
-              createLegoBuilding(xOffset, z, legoColors[Math.floor(Math.random() * legoColors.length)]);
+          [-55, 60, -90, 95].forEach(xOffset => {
+            if (Math.random() > 0.2) {
+              const h = 50 + Math.random() * 120;
+              const w = 25 + Math.random() * 15;
+              const d = 25 + Math.random() * 15;
+              
+              const bldgMat = new THREE.MeshStandardMaterial({
+                color: buildingColors[Math.floor(Math.random() * buildingColors.length)],
+                metalness: 0.3,
+                roughness: 0.2
+              });
+              const bldg = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), bldgMat);
+              bldg.position.set(xOffset, h / 2, z);
+              scene.add(bldg);
+
+              // 窗戶網格
+              const winMesh = new THREE.Mesh(new THREE.BoxGeometry(w + 0.2, h * 0.85, d + 0.2), winMat);
+              winMesh.position.copy(bldg.position);
+              winMesh.scale.set(0.97, 0.95, 0.97);
+              scene.add(winMesh);
             }
           });
         }
 
-        // 動態車輛 (雙層巴士 & 香港紅的 Taxi)
-        if (z % 100 === 0) {
-          createLegoBus(22, z);
-          createLegoTaxi(32, z + 40);
+        // 動態車輛 (雙層紅巴士與紅的 Taxi)
+        if (z % 120 === 0) {
+          createDoubleDeckerBus(22, z);
+          createRedTaxi(32, z + 50);
         }
       }
     }
 
-    // --- 樂高積木高樓 (Lego Skyscrapers) ---
-    function createLegoBuilding(x, z, colorHex) {
-      const bGroup = new THREE.Group();
-      const floors = 6 + Math.floor(Math.random() * 12);
-      const mainMat = new THREE.MeshStandardMaterial({ color: colorHex, roughness: 0.3 });
-      const winMat = new THREE.MeshStandardMaterial({ color: 0xe0f2fe, roughness: 0.1 });
-
-      for (let f = 0; f < floors; f++) {
-        // 樓層積木塊
-        const block = new THREE.Mesh(new THREE.BoxGeometry(22, 5, 22), mainMat);
-        block.position.y = f * 5.2 + 2.6;
-        bGroup.add(block);
-
-        // 窗戶塊
-        const win = new THREE.Mesh(new THREE.BoxGeometry(22.2, 2.2, 22.2), winMat);
-        win.position.y = f * 5.2 + 3.2;
-        bGroup.add(win);
-      }
-
-      // 樓頂積木凸粒
-      createLegoStuds(22, 22, 0, floors * 5.2 + 0.1, 0, bGroup);
-
-      bGroup.position.set(x, 0, z);
-      scene.add(bGroup);
-    }
-
-    // --- 樂高天橋 (Lego Viaduct Bridge) ---
-    function createLegoFlyover(zPos) {
-      const bGroup = new THREE.Group();
-      const bMat = new THREE.MeshStandardMaterial({ color: 0x94a3b8, roughness: 0.4 });
-
-      const bridge = new THREE.Mesh(new THREE.BoxGeometry(130, 3, 14), bMat);
+    // --- 高架公路天橋 ---
+    function createFlyoverBridge(zPos) {
+      const bridgeGroup = new THREE.Group();
+      
+      const bridgeMat = new THREE.MeshStandardMaterial({ color: 0x64748b, roughness: 0.4 });
+      const bridge = new THREE.Mesh(new THREE.BoxGeometry(130, 3, 14), bridgeMat);
       bridge.position.set(0, 18, zPos);
-      bGroup.add(bridge);
+      bridgeGroup.add(bridge);
 
-      createLegoStuds(130, 14, 0, 19.6, zPos, bGroup);
+      const pMat = new THREE.MeshStandardMaterial({ color: 0x475569 });
+      const p1 = new THREE.Mesh(new THREE.CylinderGeometry(1.5, 1.5, 18), pMat); p1.position.set(-20, 9, zPos);
+      const p2 = new THREE.Mesh(new THREE.CylinderGeometry(1.5, 1.5, 18), pMat); p2.position.set(20, 9, zPos);
+      bridgeGroup.add(p1, p2);
 
-      // 立柱
-      const pMat = new THREE.MeshStandardMaterial({ color: 0x64748b });
-      const p1 = new THREE.Mesh(new THREE.CylinderGeometry(2, 2, 18), pMat); p1.position.set(-22, 9, zPos);
-      const p2 = new THREE.Mesh(new THREE.CylinderGeometry(2, 2, 18), pMat); p2.position.set(22, 9, zPos);
-      bGroup.add(p1, p2);
-
-      scene.add(bGroup);
+      scene.add(bridgeGroup);
     }
 
-    // --- 樂高雙層巴士 (Lego Double-Decker Bus) ---
-    function createLegoBus(x, z) {
+    // --- 雙層紅巴士 ---
+    function createDoubleDeckerBus(x, z) {
       const bus = new THREE.Group();
-      const redMat = new THREE.MeshStandardMaterial({ color: 0xd97706 }); // 經典橘紅
-      const winMat = new THREE.MeshStandardMaterial({ color: 0x0f172a });
-      const wheelMat = new THREE.MeshStandardMaterial({ color: 0x1e293b });
+      const busBody = new THREE.Mesh(
+        new THREE.BoxGeometry(3.2, 4.2, 10),
+        new THREE.MeshStandardMaterial({ color: 0xbe123c, metalness: 0.3 }) // 港鐵/九巴紅
+      );
+      busBody.position.y = 2.3;
+      
+      const windowMesh = new THREE.Mesh(
+        new THREE.BoxGeometry(3.3, 1.2, 8.8),
+        new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.1 })
+      );
+      windowMesh.position.y = 3.2;
 
-      // 車身
-      const body = new THREE.Mesh(new THREE.BoxGeometry(3.4, 4.5, 11), redMat);
-      body.position.y = 2.6;
-      bus.add(body);
-
-      // 車窗
-      const win = new THREE.Mesh(new THREE.BoxGeometry(3.5, 1.2, 9.5), winMat);
-      win.position.set(0, 3.2, 0);
-      bus.add(win);
-
-      // 頂部凸粒
-      createLegoStuds(3.4, 11, 0, 4.95, 0, bus);
-
+      bus.add(busBody, windowMesh);
       bus.position.set(x, 0, z);
       scene.add(bus);
 
       vehicles.push({ group: bus, speed: 22 });
     }
 
-    // --- 樂高香港紅的 (Lego Red Taxi) ---
-    function createLegoTaxi(x, z) {
+    // --- 香港紅的 (Red Taxi) ---
+    function createRedTaxi(x, z) {
       const taxi = new THREE.Group();
-      const redMat = new THREE.MeshStandardMaterial({ color: 0xd97706 });
-      const whiteMat = new THREE.MeshStandardMaterial({ color: 0xf8fafc });
-
-      // 下半紅 / 上半白
-      const lower = new THREE.Mesh(new THREE.BoxGeometry(2.4, 1.0, 5.0), redMat);
+      const lower = new THREE.Mesh(new THREE.BoxGeometry(2.2, 1.0, 4.8), new THREE.MeshStandardMaterial({ color: 0xbe123c }));
       lower.position.y = 0.8;
-      const upper = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.9, 2.8), whiteMat);
-      upper.position.set(0, 1.75, -0.2);
+      const upper = new THREE.Mesh(new THREE.BoxGeometry(2.0, 0.8, 2.6), new THREE.MeshStandardMaterial({ color: 0xf8fafc }));
+      upper.position.set(0, 1.7, -0.2);
 
       taxi.add(lower, upper);
       taxi.position.set(x, 0, z);
       scene.add(taxi);
 
-      vehicles.push({ group: taxi, speed: 35 });
+      vehicles.push({ group: taxi, speed: 32 });
     }
 
-    // --- 樂高港鐵車站與月台幕門 (MTR Platform with Doors) ---
-    function createLegoStation(zPos) {
-      const st = new THREE.Group();
+    // --- 觀塘綫風格架空車站 (含月台幕門) ---
+    function createMTRStation(zPos) {
+      const station = new THREE.Group();
 
-      // 月台主體
-      const platMat = new THREE.MeshStandardMaterial({ color: 0xcbd5e1 });
-      const plat = new THREE.Mesh(new THREE.BoxGeometry(10, 2.5, 220), platMat);
-      plat.position.set(8, 6, zPos);
-      st.add(plat);
-
-      // 月台頂部凸粒
-      createLegoStuds(10, 220, 8, 7.35, zPos, st);
+      // 月台本體
+      const platMat = new THREE.MeshStandardMaterial({ color: 0x94a3b8 });
+      const plat = new THREE.Mesh(new THREE.BoxGeometry(9, 2.5, 200), platMat);
+      plat.position.set(7.5, 6, zPos);
+      station.add(plat);
 
       // 半高式月台幕門 (Platform Screen Doors)
-      const psdMat = new THREE.MeshStandardMaterial({ color: 0x38bdf8, transparent: true, opacity: 0.6 });
-      const psdBorderMat = new THREE.MeshStandardMaterial({ color: 0x0284c7 });
-      
-      for (let z = zPos - 100; z <= zPos + 100; z += 12) {
-        const door = new THREE.Mesh(new THREE.BoxGeometry(0.2, 2.2, 8), psdMat);
-        door.position.set(3.1, 8.3, z);
-        const frame = new THREE.Mesh(new THREE.BoxGeometry(0.3, 2.4, 0.6), psdBorderMat);
-        frame.position.set(3.1, 8.4, z + 4);
-        st.add(door, frame);
+      const psdMat = new THREE.MeshStandardMaterial({ color: 0x38bdf8, transparent: true, opacity: 0.5 });
+      const psdBorder = new THREE.MeshStandardMaterial({ color: 0x0284c7 });
+      for (let z = zPos - 90; z <= zPos + 90; z += 12) {
+        const door = new THREE.Mesh(new THREE.BoxGeometry(0.15, 2.2, 8), psdMat);
+        door.position.set(3.0, 8.3, z);
+        const frame = new THREE.Mesh(new THREE.BoxGeometry(0.25, 2.4, 0.5), psdBorder);
+        frame.position.set(3.0, 8.4, z + 4);
+        station.add(door, frame);
       }
 
       // 月台頂棚與港鐵藍色支柱
       const roofMat = new THREE.MeshStandardMaterial({ color: 0x0284c7 });
-      const roof = new THREE.Mesh(new THREE.BoxGeometry(12, 0.8, 220), roofMat);
-      roof.position.set(8, 13.5, zPos);
-      st.add(roof);
+      const roof = new THREE.Mesh(new THREE.BoxGeometry(11, 0.6, 200), roofMat);
+      roof.position.set(7.5, 13, zPos);
+      station.add(roof);
 
-      scene.add(st);
+      const pillarMat = new THREE.MeshStandardMaterial({ color: 0x0369a1 });
+      for (let z = zPos - 90; z <= zPos + 90; z += 25) {
+        const p1 = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.4, 7), pillarMat);
+        p1.position.set(3.5, 9.5, z);
+        const p2 = p1.clone();
+        p2.position.x = 11.5;
+        station.add(p1, p2);
+      }
+
+      scene.add(station);
     }
 
-    // --- 架空高架軌道與架空電纜網 (Viaduct Track & Overhead Catenary) ---
+    // --- 架空鐵軌與架空電纜網 ---
     function createTracksAndCatenary() {
       const trackGroup = new THREE.Group();
 
-      // 高架水泥梁
+      // 高架橋水泥大樑
       const bridge = new THREE.Mesh(
-        new THREE.BoxGeometry(7.5, 2, TRACK_LENGTH * 2),
+        new THREE.BoxGeometry(7, 2, TRACK_LENGTH * 2),
         new THREE.MeshStandardMaterial({ color: 0x64748b })
       );
       bridge.position.set(0, 5, TRACK_LENGTH / 2);
       trackGroup.add(bridge);
 
-      // 高架水泥柱
+      // 高架水泥柱與電纜支架
       const pillarMat = new THREE.MeshStandardMaterial({ color: 0x475569 });
       for (let z = 0; z < TRACK_LENGTH; z += 35) {
-        const p = new THREE.Mesh(new THREE.CylinderGeometry(1.8, 2.2, 5, 12), pillarMat);
-        p.position.set(0, 2.5, z);
-        trackGroup.add(p);
+        const pillar = new THREE.Mesh(new THREE.CylinderGeometry(1.8, 2.2, 5), pillarMat);
+        pillar.position.set(0, 2.5, z);
+        trackGroup.add(pillar);
 
-        // 架空電纜支架 (Catenary Gantry)
-        const gantry = new THREE.Group();
-        const pole1 = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 6), pillarMat);
-        pole1.position.set(-3.2, 9, z);
-        const pole2 = pole1.clone();
-        pole2.position.x = 3.2;
-        const crossBeam = new THREE.Mesh(new THREE.BoxGeometry(6.8, 0.2, 0.2), pillarMat);
-        crossBeam.position.set(0, 11.8, z);
-        gantry.add(pole1, pole2, crossBeam);
-        trackGroup.add(gantry);
+        // 電纜支架
+        const pole1 = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 5.5), pillarMat);
+        pole1.position.set(-3.2, 8.8, z);
+        const pole2 = pole1.clone(); pole2.position.x = 3.2;
+        const cross = new THREE.Mesh(new THREE.BoxGeometry(6.6, 0.2, 0.2), pillarMat);
+        cross.position.set(0, 11.5, z);
+        trackGroup.add(pole1, pole2, cross);
       }
 
-      // 雙軌鋼軌
+      // 雙鋼軌
       const railMat = new THREE.MeshStandardMaterial({ color: 0xf1f5f9, metalness: 0.9, roughness: 0.1 });
       const leftRail = new THREE.Mesh(new THREE.BoxGeometry(0.25, 0.35, TRACK_LENGTH * 2), railMat); leftRail.position.set(-1.8, 6.2, TRACK_LENGTH / 2);
       const rightRail = new THREE.Mesh(new THREE.BoxGeometry(0.25, 0.35, TRACK_LENGTH * 2), railMat); rightRail.position.set(1.8, 6.2, TRACK_LENGTH / 2);
@@ -467,8 +436,8 @@
       scene.add(trackGroup);
     }
 
-    // --- 精細 LEGO 港鐵列車模型 (LEGO MTR Train) ---
-    function createLegoMTRTrain() {
+    // --- 精美港鐵 MTR 車廂 (含紅色流線車頭與集電弓) ---
+    function createMTRTrain() {
       if (trainGroup) scene.remove(trainGroup);
       trainGroup = new THREE.Group();
 
@@ -476,71 +445,58 @@
 
       for (let c = 0; c < 2; c++) {
         const car = new THREE.Group();
-        const zOffset = -c * (carLength + 1.0);
+        const zOffset = -c * (carLength + 0.8);
 
-        // 銀色不銹鋼積木車身
-        const bodyMat = new THREE.MeshStandardMaterial({ color: 0xe2e8f0, metalness: 0.5, roughness: 0.2 });
-        const body = new THREE.Mesh(new THREE.BoxGeometry(3.6, 3.6, carLength), bodyMat);
-        body.position.y = 8.0;
+        // 銀灰不銹鋼金屬車身
+        const bodyMat = new THREE.MeshStandardMaterial({ color: 0xcbd5e1, metalness: 0.85, roughness: 0.15 });
+        const body = new THREE.Mesh(new THREE.BoxGeometry(3.6, 3.8, carLength), bodyMat);
+        body.position.y = 8.1;
         car.add(body);
 
-        // 港鐵經典車頭 (Red Nose & Curved Slope)
+        // 港鐵經典流線型紅色車頭 (Red Nose)
         if (c === 0) {
-          const noseMat = new THREE.MeshStandardMaterial({ color: 0xd97706 }); // 經典亮紅
-          const nose = new THREE.Mesh(new THREE.BoxGeometry(3.62, 3.62, 2.5), noseMat);
-          nose.position.set(0, 8.0, carLength / 2 + 1.0);
+          const noseMat = new THREE.MeshStandardMaterial({ color: 0xbe123c, metalness: 0.3, roughness: 0.2 });
+          const nose = new THREE.Mesh(new THREE.BoxGeometry(3.62, 3.82, 2.5), noseMat);
+          nose.position.set(0, 8.1, carLength / 2 + 1.0);
           car.add(nose);
 
-          // 車頭駕駛室玻璃
-          const cabWin = new THREE.Mesh(new THREE.BoxGeometry(3.2, 1.4, 0.2), new THREE.MeshStandardMaterial({ color: 0x0284c7 }));
-          cabWin.position.set(0, 8.7, carLength / 2 + 2.3);
+          // 車頭駕駛室窗戶
+          const cabWin = new THREE.Mesh(new THREE.BoxGeometry(3.2, 1.4, 0.2), new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.1 }));
+          cabWin.position.set(0, 8.8, carLength / 2 + 2.3);
           car.add(cabWin);
         }
 
-        // 車身港鐵經典紅色拉條 (Side Red Stripe)
+        // 車身港鐵紅色腰線拉條
         const stripe = new THREE.Mesh(
-          new THREE.BoxGeometry(3.68, 0.4, carLength),
-          new THREE.MeshStandardMaterial({ color: 0xd97706 })
+          new THREE.BoxGeometry(3.68, 0.35, carLength),
+          new THREE.MeshStandardMaterial({ color: 0xbe123c })
         );
         stripe.position.y = 7.1;
         car.add(stripe);
 
-        // 立體車窗與車門細節 (3D Inset Doors)
-        const doorMat = new THREE.MeshStandardMaterial({ color: 0x94a3b8, metalness: 0.8 });
+        // 深色車門與車窗細節
+        const winMat = new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.1 });
         for (let z = -carLength / 2 + 3; z < carLength / 2 - 2; z += 4.5) {
-          const doorL = new THREE.Mesh(new THREE.BoxGeometry(0.1, 2.2, 1.6), doorMat);
-          doorL.position.set(-1.81, 8.0, z);
-          const doorR = doorL.clone(); doorR.position.x = 1.81;
-          car.add(doorL, doorR);
+          const winL = new THREE.Mesh(new THREE.BoxGeometry(0.1, 1.2, 2.0), winMat);
+          winL.position.set(-1.81, 8.5, z);
+          const winR = winL.clone(); winR.position.x = 1.81;
+          car.add(winL, winR);
         }
-
-        // 車頂冷氣機箱 (Air Conditioners)
-        const acUnit = new THREE.Mesh(
-          new THREE.BoxGeometry(2.4, 0.6, 6.0),
-          new THREE.MeshStandardMaterial({ color: 0x64748b })
-        );
-        acUnit.position.set(0, 10.1, 0);
-        car.add(acUnit);
 
         // 車頂集電弓 (Pantograph)
         if (c === 1) {
-          const panto = new THREE.Group();
-          const pMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, metalness: 0.9 });
-          const arm = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.15, 1.2), pMat);
-          arm.position.set(0, 11.2, 0);
-          panto.add(arm);
-          car.add(panto);
+          const pantoMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, metalness: 0.9 });
+          const arm = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.15, 1.2), pantoMat);
+          arm.position.set(0, 10.3, 0);
+          car.add(arm);
         }
-
-        // 車頂 LEGO 凸粒 (Studs on top)
-        createLegoStuds(3.6, carLength, 0, 9.9, 0, car);
 
         car.position.z = zOffset;
         trainGroup.add(car);
       }
 
-      // 車頭車燈
-      headLight = new THREE.SpotLight(0xffffff, 0, 180, Math.PI / 5, 0.5);
+      // 車頭探照燈
+      headLight = new THREE.SpotLight(0xfffbebe, 0, 180, Math.PI / 5, 0.5);
       headLight.position.set(0, 8.0, 14);
       headLight.target.position.set(0, 0, 80);
       trainGroup.add(headLight);
@@ -575,186 +531,4 @@
         camera.position.set(tPos.x + 16, tPos.y + 16, tPos.z - 35);
         camera.lookAt(tPos.x, tPos.y + 8, tPos.z + 10);
       } else if (state.cameraMode === 2) {
-        camera.position.set(tPos.x, tPos.y + 80, tPos.z - 10);
-        camera.lookAt(tPos.x, tPos.y, tPos.z + 30);
-      }
-    }
-
-    function updateWeatherUI() {
-      const btn = document.getElementById('btn-weather');
-      if (state.weatherMode === 0) {
-        scene.background.setHex(0x38bdf8);
-        scene.fog.color.setHex(0x38bdf8);
-        headLight.intensity = 0;
-        rainParticles.visible = false;
-        btn.innerText = "☀️ 天氣: 晴天";
-      } else if (state.weatherMode === 1) {
-        scene.background.setHex(0x475569);
-        scene.fog.color.setHex(0x475569);
-        headLight.intensity = 1.5;
-        rainParticles.visible = true;
-        btn.innerText = "🌧️ 天氣: 雨天";
-      } else if (state.weatherMode === 2) {
-        scene.background.setHex(0x020617);
-        scene.fog.color.setHex(0x020617);
-        headLight.intensity = 3.5;
-        rainParticles.visible = false;
-        btn.innerText = "🌙 天氣: 夜晚";
-      }
-    }
-
-    function playHornSound() {
-      try {
-        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        const osc1 = audioCtx.createOscillator();
-        const osc2 = audioCtx.createOscillator();
-        const gain = audioCtx.createGain();
-
-        osc1.type = 'sawtooth'; osc2.type = 'sawtooth';
-        osc1.frequency.setValueAtTime(293.66, audioCtx.currentTime);
-        osc2.frequency.setValueAtTime(349.23, audioCtx.currentTime);
-
-        gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 1.8);
-
-        osc1.connect(gain); osc2.connect(gain);
-        gain.connect(audioCtx.destination);
-
-        osc1.start(); osc2.start();
-        osc1.stop(audioCtx.currentTime + 1.8);
-        osc2.stop(audioCtx.currentTime + 1.8);
-      } catch (e) {}
-    }
-
-    function updatePhysics(delta) {
-      const accel = (state.power / 100) * 16.0;
-      const decel = (state.brake / 100) * 32.0 + 1.2;
-
-      if (state.power > 0) state.speed += accel * delta;
-      if (state.brake > 0 || state.power === 0) state.speed -= decel * delta;
-
-      state.speed = Math.max(0, Math.min(state.maxSpeed, state.speed));
-
-      const moveDist = ((state.speed * 1000) / 3600) * delta;
-      state.trainZ += moveDist;
-      state.distance += moveDist;
-
-      if (trainGroup) trainGroup.position.z = state.trainZ;
-
-      if (state.trainZ > TRACK_LENGTH) {
-        state.trainZ -= TRACK_LENGTH;
-        if (trainGroup) trainGroup.position.z = state.trainZ;
-      }
-
-      const zEl = document.getElementById('zone-indicator');
-      if (state.trainZ < 1800) {
-        zEl.innerText = "當前位置：🏞️ 樂高郊外高架段";
-      } else if (state.trainZ >= 1800 && state.trainZ < 2800) {
-        zEl.innerText = "當前位置：🚉 觀塘綫樂高車站";
-      } else {
-        zEl.innerText = "當前位置：🏙️ 樂高摩天大樓群";
-      }
-
-      vehicles.forEach(v => {
-        v.group.position.z += v.speed * delta;
-        if (v.group.position.z > TRACK_LENGTH) v.group.position.z = 0;
-      });
-
-      if (rainParticles && rainParticles.visible) {
-        rainParticles.position.z = state.trainZ;
-        const pos = rainParticles.geometry.attributes.position.array;
-        for (let i = 1; i < pos.length; i += 3) {
-          pos[i] -= 90 * delta;
-          if (pos[i] < 0) pos[i] = 100;
-        }
-        rainParticles.geometry.attributes.position.needsUpdate = true;
-      }
-    }
-
-    function updateUI() {
-      document.getElementById('val-speed').innerText = Math.round(state.speed);
-      document.getElementById('val-power').innerText = state.power;
-      document.getElementById('val-brake').innerText = state.brake;
-      document.getElementById('val-dist').innerText = (state.distance / 1000).toFixed(2);
-      document.getElementById('speed-bar').style.width = `${(state.speed / state.maxSpeed) * 100}%`;
-    }
-
-    function setupEvents() {
-      const sliderPower = document.getElementById('slider-power');
-      const sliderBrake = document.getElementById('slider-brake');
-
-      sliderPower.addEventListener('input', (e) => {
-        state.power = parseInt(e.target.value);
-        if (state.power > 0 && state.brake > 0) {
-          state.brake = 0; sliderBrake.value = 0;
-        }
-      });
-
-      sliderBrake.addEventListener('input', (e) => {
-        state.brake = parseInt(e.target.value);
-        if (state.brake > 0 && state.power > 0) {
-          state.power = 0; sliderPower.value = 0;
-        }
-      });
-
-      document.getElementById('btn-horn').addEventListener('click', playHornSound);
-
-      document.getElementById('btn-camera').addEventListener('click', () => {
-        state.cameraMode = (state.cameraMode + 1) % 3;
-        const names = ["駕駛艙", "全景跟隨", "鳥瞰視角"];
-        document.getElementById('btn-camera').innerText = `🎥 視角: ${names[state.cameraMode]}`;
-      });
-
-      document.getElementById('btn-weather').addEventListener('click', () => {
-        state.weatherMode = (state.weatherMode + 1) % 3;
-        updateWeatherUI();
-      });
-
-      document.getElementById('btn-train').addEventListener('click', () => {
-        state.trainType = state.trainType === 0 ? 1 : 0;
-        state.maxSpeed = state.trainType === 0 ? 120 : 160;
-        document.getElementById('btn-train').innerText = state.trainType === 0 ? "🚆 車款: LEGO 港鐵綫" : "🚆 車款: LEGO 機場快綫";
-        createLegoMTRTrain();
-      });
-
-      window.addEventListener('keydown', (e) => {
-        if (e.key === 'w' || e.key === 'W' || e.key === 'ArrowUp') {
-          state.power = Math.min(100, state.power + 10); state.brake = 0;
-        } else if (e.key === 's' || e.key === 'S' || e.key === 'ArrowDown') {
-          state.brake = Math.min(100, state.brake + 10); state.power = 0;
-        } else if (e.key === 'h' || e.key === 'H') {
-          playHornSound();
-        } else if (e.key === 'c' || e.key === 'C') {
-          document.getElementById('btn-camera').click();
-        }
-        sliderPower.value = state.power;
-        sliderBrake.value = state.brake;
-      });
-    }
-
-    function onWindowResize() {
-      if (!renderer || !camera) return;
-      camera.aspect = window.innerWidth / window.innerHeight;
-      camera.updateProjectionMatrix();
-      renderer.setSize(window.innerWidth, window.innerHeight);
-    }
-
-    let clock = new THREE.Clock();
-
-    function animate() {
-      requestAnimationFrame(animate);
-      const delta = clock.getDelta();
-      updatePhysics(delta);
-      updateCamera();
-      updateUI();
-      renderer.render(scene, camera);
-    }
-
-    window.onload = () => {
-      initScene();
-      setupEvents();
-      animate();
-    };
-  </script>
-</body>
-</html>
+        camera.position.set(tPos.x, tPos.y + 80,
