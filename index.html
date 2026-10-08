@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="zh-HK">
 <head>
   <meta charset="UTF-8">
@@ -20,21 +20,20 @@
       color: #fff;
     }
     #webgl-container {
-      width: 100%;
-      height: 100%;
-      position: absolute;
+      width: 100vw;
+      height: 100vh;
+      position: fixed;
       top: 0;
       left: 0;
       z-index: 1;
     }
 
-    /* UI Overlay */
     #ui-container {
-      position: absolute;
+      position: fixed;
       top: 0;
       left: 0;
-      width: 100%;
-      height: 100%;
+      width: 100vw;
+      height: 100vh;
       z-index: 10;
       pointer-events: none;
       display: flex;
@@ -47,7 +46,6 @@
       pointer-events: auto;
     }
 
-    /* Top HUD */
     .top-hud {
       display: flex;
       justify-content: space-between;
@@ -107,7 +105,6 @@
       margin-left: 2px;
     }
 
-    /* Controls Panels */
     .controls-bottom {
       display: flex;
       justify-content: space-between;
@@ -127,7 +124,6 @@
       align-items: center;
     }
 
-    /* Levers */
     .lever-container {
       display: flex;
       flex-direction: column;
@@ -146,7 +142,6 @@
       cursor: pointer;
     }
 
-    /* Buttons Group */
     .btn-grid {
       display: grid;
       grid-template-columns: repeat(2, 1fr);
@@ -180,18 +175,7 @@
       border: none;
       color: #fff;
     }
-    .btn-horn:hover {
-      background: linear-gradient(135deg, #f43f5e, #e11d48);
-    }
 
-    /* Camera Switcher & Weather */
-    .side-controls {
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-    }
-
-    /* Speed gauge visual bar */
     .progress-bar-bg {
       width: 100%;
       height: 6px;
@@ -207,14 +191,12 @@
       transition: width 0.1s linear;
     }
 
-    /* Mobile Responsive adjustments */
     @media (max-width: 768px) {
       .hud-stats { flex-wrap: wrap; }
       .controls-bottom { flex-direction: column; align-items: stretch; }
       .control-panel { justify-content: space-between; }
     }
   </style>
-  <!-- Three.js & Dependencies -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 </head>
 <body>
@@ -222,7 +204,6 @@
   <div id="webgl-container"></div>
 
   <div id="ui-container">
-    <!-- Top HUD Header -->
     <div class="top-hud">
       <div class="brand-title interactive">
         <h1>🚄 THREE.JS TRAIN SIMULATOR</h1>
@@ -250,9 +231,7 @@
       </div>
     </div>
 
-    <!-- Bottom Controls Overlay -->
     <div class="controls-bottom">
-      <!-- Levers Panel -->
       <div class="control-panel interactive">
         <div class="lever-container">
           <div class="lever-label">⚡ 電門 (P)</div>
@@ -264,7 +243,6 @@
         </div>
       </div>
 
-      <!-- Action Buttons Panel -->
       <div class="control-panel interactive">
         <div class="btn-grid">
           <button class="btn btn-horn" id="btn-horn">🔊 鳴笛 (Horn)</button>
@@ -277,450 +255,22 @@
   </div>
 
   <script>
-    // --- 遊戲狀態變數 ---
     const state = {
-      speed: 0,           // 當前車速 (km/h)
-      maxSpeed: 280,      // 最高時速
-      power: 0,           // 電門推力 (%)
-      brake: 0,           // 煞車力道 (%)
-      distance: 0,        // 總里程 (米)
-      cameraMode: 0,      // 0: 駕駛艙, 1: 跟隨視角, 2: 俯瞰
-      weatherMode: 0,     // 0: 晴天, 1: 下雨, 2: 夜晚
-      trainType: 0,       // 0: 高鐵 (Bullet), 1: 電聯車 (Commuter)
-      trainZ: 0           // 列車在世界座標 Z 軸的位置
+      speed: 0,
+      maxSpeed: 280,
+      power: 0,
+      brake: 0,
+      distance: 0,
+      cameraMode: 0,
+      weatherMode: 0,
+      trainType: 0,
+      trainZ: 0
     };
 
-    // --- Three.js 核心變數 ---
     let scene, camera, renderer;
     let trainGroup, headLight, rainParticles;
     const trees = [], poles = [];
     const TRACK_LENGTH = 2000;
 
-    // --- 初始化 Three.js 場景 ---
     function initScene() {
-      const container = document.getElementById('webgl-container');
-
-      scene = new THREE.Scene();
-      scene.background = new THREE.Color(0x87ceeb); // 晴天天空藍
-      scene.fog = new THREE.FogExp2(0x87ceeb, 0.0015);
-
-      camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 2000);
-
-      renderer = new THREE.WebGLRenderer({ antialias: true });
-      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-      renderer.setSize(window.innerWidth, window.innerHeight);
-      renderer.shadowMap.enabled = true;
-      renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-      container.appendChild(renderer.domElement);
-
-      // 光源設定
-      const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
-      scene.add(ambientLight);
-
-      const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
-      dirLight.position.set(100, 150, 50);
-      dirLight.castShadow = true;
-      dirLight.shadow.mapSize.width = 2048;
-      dirLight.shadow.mapSize.height = 2048;
-      dirLight.shadow.camera.near = 0.5;
-      dirLight.shadow.camera.far = 500;
-      const d = 100;
-      dirLight.shadow.camera.left = -d;
-      dirLight.shadow.camera.right = d;
-      dirLight.shadow.camera.top = d;
-      dirLight.shadow.camera.bottom = -d;
-      scene.add(dirLight);
-
-      // 建構世界物件
-      createEnvironment();
-      createTracks();
-      createTrain();
-      createRain();
-
-      window.addEventListener('resize', onWindowResize);
-    }
-
-    // --- 建立環境 (地面、樹木、電線桿) ---
-    function createEnvironment() {
-      // 地面
-      const groundGeo = new THREE.PlaneGeometry(1000, TRACK_LENGTH * 2);
-      const groundMat = new THREE.MeshStandardMaterial({ color: 0x355e3b, roughness: 0.9 });
-      const ground = new THREE.Mesh(groundGeo, groundMat);
-      ground.rotation.x = -Math.PI / 2;
-      ground.receiveShadow = true;
-      scene.add(ground);
-
-      // 沿途樹木與電線桿
-      const treeGeo = new THREE.ConeGeometry(3, 10, 5);
-      const trunkGeo = new THREE.CylinderGeometry(0.5, 0.5, 3);
-      const treeMat = new THREE.MeshStandardMaterial({ color: 0x1e4620 });
-      const trunkMat = new THREE.MeshStandardMaterial({ color: 0x5c4033 });
-
-      for (let z = -TRACK_LENGTH; z < TRACK_LENGTH; z += 30) {
-        // 兩側樹木
-        [-25, 25, -40, 40].forEach(xOffset => {
-          if (Math.random() > 0.3) {
-            const group = new THREE.Group();
-            const trunk = new THREE.Mesh(trunkGeo, trunkMat);
-            trunk.position.y = 1.5;
-            const leaves = new THREE.Mesh(treeGeo, treeMat);
-            leaves.position.y = 65 / 10;
-            leaves.castShadow = true;
-            group.add(trunk, leaves);
-            group.position.set(xOffset + (Math.random() * 6 - 3), 0, z);
-            scene.add(group);
-            trees.push(group);
-          }
-        });
-
-        // 鐵路電線桿 (左側)
-        if (z % 60 === 0) {
-          const poleGroup = new THREE.Group();
-          const poleGeo = new THREE.CylinderGeometry(0.3, 0.3, 12);
-          const poleMat = new THREE.MeshStandardMaterial({ color: 0x71717a });
-          const pole = new THREE.Mesh(poleGeo, poleMat);
-          pole.position.y = 6;
-
-          const armGeo = new THREE.BoxGeometry(6, 0.2, 0.2);
-          const arm = new THREE.Mesh(armGeo, poleMat);
-          arm.position.set(2.5, 11, 0);
-
-          poleGroup.add(pole, arm);
-          poleGroup.position.set(-8, 0, z);
-          scene.add(poleGroup);
-          poles.push(poleGroup);
-        }
-      }
-    }
-
-    // --- 建立鐵路軌道 ---
-    function createTracks() {
-      const trackGroup = new THREE.Group();
-
-      // 路基 (Gravel)
-      const bedGeo = new THREE.BoxGeometry(6, 0.6, TRACK_LENGTH * 2);
-      const bedMat = new THREE.MeshStandardMaterial({ color: 0x52525b, roughness: 0.8 });
-      const bed = new THREE.Mesh(bedGeo, bedMat);
-      bed.position.y = 0.3;
-      trackGroup.add(bed);
-
-      // 鐵軌 (Rails)
-      const railGeo = new THREE.BoxGeometry(0.2, 0.3, TRACK_LENGTH * 2);
-      const railMat = new THREE.MeshStandardMaterial({ color: 0xd4d4d8, metalness: 0.8, roughness: 0.2 });
-      
-      const leftRail = new THREE.Mesh(railGeo, railMat);
-      leftRail.position.set(-1.8, 0.75, 0);
-      const rightRail = new THREE.Mesh(railGeo, railMat);
-      rightRail.position.set(1.8, 0.75, 0);
-      trackGroup.add(leftRail, rightRail);
-
-      // 枕木 (Sleeper)
-      const sleeperGeo = new THREE.BoxGeometry(4.5, 0.2, 0.6);
-      const sleeperMat = new THREE.MeshStandardMaterial({ color: 0x3f3f46 });
-      for (let z = -TRACK_LENGTH; z < TRACK_LENGTH; z += 2.5) {
-        const sleeper = new THREE.Mesh(sleeperGeo, sleeperMat);
-        sleeper.position.set(0, 0.6, z);
-        trackGroup.add(sleeper);
-      }
-
-      scene.add(trackGroup);
-    }
-
-    // --- 建立列車模型 ---
-    function createTrain() {
-      if (trainGroup) scene.remove(trainGroup);
-      trainGroup = new THREE.Group();
-
-      const isBullet = state.trainType === 0;
-      const trainLength = 24;
-      const trainColor = isBullet ? 0xf8fafc : 0x0284c7; // 高鐵白 / 電聯藍
-
-      // 車身主體
-      const bodyGeo = new THREE.BoxGeometry(3.6, 3.8, trainLength);
-      const bodyMat = new THREE.MeshStandardMaterial({ color: trainColor, metalness: 0.3, roughness: 0.3 });
-      const body = new THREE.Mesh(bodyGeo, bodyMat);
-      body.position.y = 2.7;
-      body.castShadow = true;
-      trainGroup.add(body);
-
-      // 車頭造型 (高鐵流線型 Nose)
-      if (isBullet) {
-        const noseGeo = new THREE.ConeGeometry(2.3, 6, 4);
-        const noseMat = new THREE.MeshStandardMaterial({ color: trainColor, metalness: 0.3 });
-        const nose = new THREE.Mesh(noseGeo, noseMat);
-        nose.rotation.x = Math.PI / 2;
-        nose.rotation.y = Math.PI / 4;
-        nose.position.set(0, 2.3, trainLength / 2 + 2.5);
-        trainGroup.add(nose);
-      }
-
-      // 車窗
-      const windowMat = new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.1 });
-      for (let z = -trainLength / 2 + 3; z < trainLength / 2 - 2; z += 3.5) {
-        const winLeft = new THREE.Mesh(new THREE.BoxGeometry(0.1, 1.2, 2.2), windowMat);
-        winLeft.position.set(-1.81, 3.2, z);
-        const winRight = winLeft.clone();
-        winRight.position.x = 1.81;
-        trainGroup.add(winLeft, winRight);
-      }
-
-      // 車頭燈 (Headlight)
-      headLight = new THREE.SpotLight(0xffffff, 0, 150, Math.PI / 6, 0.5);
-      headLight.position.set(0, 2.5, trainLength / 2 + 1);
-      headLight.target.position.set(0, 0, trainLength / 2 + 50);
-      trainGroup.add(headLight);
-      trainGroup.add(headLight.target);
-
-      scene.add(trainGroup);
-    }
-
-    // --- 下雨特效粒子 ---
-    function createRain() {
-      const rainCount = 4000;
-      const rainGeo = new THREE.BufferGeometry();
-      const positions = new Float32Array(rainCount * 3);
-
-      for (let i = 0; i < rainCount * 3; i += 3) {
-        positions[i] = (Math.random() - 0.5) * 200;
-        positions[i + 1] = Math.random() * 100;
-        positions[i + 2] = (Math.random() - 0.5) * 200;
-      }
-
-      rainGeo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-      const rainMat = new THREE.PointsMaterial({
-        color: 0xcbd5e1,
-        size: 0.4,
-        transparent: true,
-        opacity: 0.6
-      });
-
-      rainParticles = new THREE.Points(rainGeo, rainMat);
-      rainParticles.visible = false;
-      scene.add(rainParticles);
-    }
-
-    // --- 攝影機控制系統 ---
-    function updateCamera() {
-      if (!trainGroup) return;
-
-      const trainPos = trainGroup.position;
-
-      if (state.cameraMode === 0) {
-        // 駕駛艙第一人稱
-        camera.position.set(trainPos.x, trainPos.y + 2.2, trainPos.z + 10);
-        camera.lookAt(trainPos.x, trainPos.y + 2.0, trainPos.z + 100);
-      } else if (state.cameraMode === 1) {
-        // 第三人稱斜後方跟隨
-        camera.position.set(trainPos.x + 12, trainPos.y + 8, trainPos.z - 25);
-        camera.lookAt(trainPos.x, trainPos.y + 2, trainPos.z + 15);
-      } else if (state.cameraMode === 2) {
-        // 天空鳥瞰視角
-        camera.position.set(trainPos.x, trainPos.y + 60, trainPos.z - 10);
-        camera.lookAt(trainPos.x, trainPos.y, trainPos.z + 20);
-      }
-    }
-
-    // --- 天氣/時間切換邏輯 ---
-    function updateWeatherUI() {
-      const btn = document.getElementById('btn-weather');
-      if (state.weatherMode === 0) {
-        // 晴天
-        scene.background.setHex(0x87ceeb);
-        scene.fog.color.setHex(0x87ceeb);
-        headLight.intensity = 0;
-        rainParticles.visible = false;
-        btn.innerText = "☀️ 天氣: 晴天";
-      } else if (state.weatherMode === 1) {
-        // 雨天
-        scene.background.setHex(0x475569);
-        scene.fog.color.setHex(0x475569);
-        headLight.intensity = 1.5;
-        rainParticles.visible = true;
-        btn.innerText = "🌧️ 天氣: 雨天";
-      } else if (state.weatherMode === 2) {
-        // 夜晚
-        scene.background.setHex(0x020617);
-        scene.fog.color.setHex(0x020617);
-        headLight.intensity = 3.5;
-        rainParticles.visible = false;
-        btn.innerText = "🌙 天氣: 夜晚";
-      }
-    }
-
-    // --- 聲音模擬 (使用 Web Audio API 生成音效，免外部檔案) ---
-    function playHornSound() {
-      try {
-        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        const osc1 = audioCtx.createOscillator();
-        const osc2 = audioCtx.createOscillator();
-        const gain = audioCtx.createGain();
-
-        osc1.type = 'sawtooth';
-        osc2.type = 'sawtooth';
-        osc1.frequency.setValueAtTime(311.13, audioCtx.currentTime); // D#4
-        osc2.frequency.setValueAtTime(370.00, audioCtx.currentTime); // F#4
-
-        gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 1.8);
-
-        osc1.connect(gain);
-        osc2.connect(gain);
-        gain.connect(audioCtx.destination);
-
-        osc1.start();
-        osc2.start();
-        osc1.stop(audioCtx.currentTime + 1.8);
-        osc2.stop(audioCtx.currentTime + 1.8);
-      } catch (e) {
-        console.log("Audio not supported or blocked");
-      }
-    }
-
-    // --- 列車物理運動計算 (Physics Update) ---
-    function updatePhysics(delta) {
-      // 依電門與煞車計算加速度
-      const accel = (state.power / 100) * 18.0;      // 最大推力加速度
-      const decel = (state.brake / 100) * 35.0 + 1.5; // 煞車與自然摩擦阻力
-
-      if (state.power > 0) {
-        state.speed += accel * delta;
-      }
-      
-      // 煞車作用
-      if (state.brake > 0 || state.power === 0) {
-        state.speed -= decel * delta;
-      }
-
-      // 速度限制邊界
-      state.speed = Math.max(0, Math.min(state.maxSpeed, state.speed));
-
-      // 計算位移 (km/h 轉換為 m/s)
-      const speedInMS = (state.speed * 1000) / 3600;
-      const moveDistance = speedInMS * delta;
-      
-      state.trainZ += moveDistance;
-      state.distance += moveDistance;
-
-      // 更新列車 3D 位置
-      if (trainGroup) {
-        trainGroup.position.z = state.trainZ;
-      }
-
-      // 無限軌道循環 (當列車前進超出距離時重置景物)
-      if (state.trainZ > TRACK_LENGTH) {
-        state.trainZ -= TRACK_LENGTH;
-        if (trainGroup) trainGroup.position.z = state.trainZ;
-      }
-
-      // 雨天粒子隨列車移動
-      if (rainParticles && rainParticles.visible) {
-        rainParticles.position.z = state.trainZ;
-        const positions = rainParticles.geometry.attributes.position.array;
-        for (let i = 1; i < positions.length; i += 3) {
-          positions[i] -= 80 * delta;
-          if (positions[i] < 0) positions[i] = 100;
-        }
-        rainParticles.geometry.attributes.position.needsUpdate = true;
-      }
-    }
-
-    // --- 更新 UI 顯示 ---
-    function updateUI() {
-      document.getElementById('val-speed').innerText = Math.round(state.speed);
-      document.getElementById('val-power').innerText = state.power;
-      document.getElementById('val-brake').innerText = state.brake;
-      document.getElementById('val-dist').innerText = (state.distance / 1000).toFixed(2);
-
-      const speedPct = (state.speed / state.maxSpeed) * 100;
-      document.getElementById('speed-bar').style.width = `${speedPct}%`;
-    }
-
-    // --- 事件監聽 ( UI 控制 & 鍵盤快捷鍵 ) ---
-    function setupEvents() {
-      // Sliders
-      const sliderPower = document.getElementById('slider-power');
-      const sliderBrake = document.getElementById('slider-brake');
-
-      sliderPower.addEventListener('input', (e) => {
-        state.power = parseInt(e.target.value);
-        if (state.power > 0 && state.brake > 0) {
-          state.brake = 0;
-          sliderBrake.value = 0;
-        }
-      });
-
-      sliderBrake.addEventListener('input', (e) => {
-        state.brake = parseInt(e.target.value);
-        if (state.brake > 0 && state.power > 0) {
-          state.power = 0;
-          sliderPower.value = 0;
-        }
-      });
-
-      // Buttons
-      document.getElementById('btn-horn').addEventListener('click', playHornSound);
-
-      document.getElementById('btn-camera').addEventListener('click', () => {
-        state.cameraMode = (state.cameraMode + 1) % 3;
-        const names = ["駕駛艙", "跟隨視角", "鳥瞰視角"];
-        document.getElementById('btn-camera').innerText = `🎥 視角: ${names[state.cameraMode]}`;
-      });
-
-      document.getElementById('btn-weather').addEventListener('click', () => {
-        state.weatherMode = (state.weatherMode + 1) % 3;
-        updateWeatherUI();
-      });
-
-      document.getElementById('btn-train').addEventListener('click', () => {
-        state.trainType = state.trainType === 0 ? 1 : 0;
-        state.maxSpeed = state.trainType === 0 ? 280 : 160;
-        document.getElementById('btn-train').innerText = state.trainType === 0 ? "🚆 車款: 高鐵" : "🚆 車款: 電聯車";
-        createTrain();
-      });
-
-      // 鍵盤控制支援
-      window.addEventListener('keydown', (e) => {
-        if (e.key === 'w' || e.key === 'W' || e.key === 'ArrowUp') {
-          state.power = Math.min(100, state.power + 10);
-          state.brake = 0;
-        } else if (e.key === 's' || e.key === 'S' || e.key === 'ArrowDown') {
-          state.brake = Math.min(100, state.brake + 10);
-          state.power = 0;
-        } else if (e.key === 'h' || e.key === 'H') {
-          playHornSound();
-        } else if (e.key === 'c' || e.key === 'C') {
-          document.getElementById('btn-camera').click();
-        }
-        sliderPower.value = state.power;
-        sliderBrake.value = state.brake;
-      });
-    }
-
-    function onWindowResize() {
-      camera.aspect = window.innerWidth / window.innerHeight;
-      camera.updateProjectionMatrix();
-      renderer.setSize(window.innerWidth, window.innerHeight);
-    }
-
-    // --- 主渲染循環 (Main Loop) ---
-    let clock = new THREE.Clock();
-
-    function animate() {
-      requestAnimationFrame(animate);
-
-      const delta = clock.getDelta();
-
-      updatePhysics(delta);
-      updateCamera();
-      updateUI();
-
-      renderer.render(scene, camera);
-    }
-
-    // --- 啟動項目 ---
-    initScene();
-    setupEvents();
-    animate();
-  </script>
-</body>
-</html>
+      const container = document
